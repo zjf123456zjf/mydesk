@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyDesk">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>MyDesk 远程桌面</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================== 首页 ============================== -->
+<section id="home">
+  <div class="home-inner">
+    <header class="brand">
+      <img src="icon-192.png" alt="" width="44" height="44">
+      <div>
+        <h1>MyDesk</h1>
+        <p>远程控制你的电脑</p>
+      </div>
+      <button id="btn-settings" class="icon-btn" aria-label="设置">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+      </button>
+    </header>
+
+    <div id="unsupported" class="notice error" hidden></div>
+
+    <form id="connect-form" class="card" autocomplete="off">
+      <label>设备代码
+        <input id="f-id" inputmode="numeric" pattern="[0-9 ]*" placeholder="电脑上显示的 9 位数字" maxlength="11" autocomplete="off">
+      </label>
+      <label>密码
+        <input id="f-pw" type="password" placeholder="电脑上设置的连接密码" autocomplete="off">
+      </label>
+      <label class="check"><input id="f-remember" type="checkbox" checked> 记住密码（只保存加密后的密钥）</label>
+      <button type="submit" class="primary" id="btn-connect">连接</button>
+    </form>
+
+    <div id="error" class="notice error" hidden></div>
+
+    <h2 id="recent-title" hidden>最近连接</h2>
+    <ul id="recent" class="recent"></ul>
+
+    <div id="install-hint" class="notice" hidden></div>
+    <footer id="footer"></footer>
+  </div>
+</section>
+
+<!-- ============================== 设置 ============================== -->
+<div id="settings" class="sheet" hidden>
+  <div class="sheet-body">
+    <h2>设置</h2>
+    <label class="row">操作方式
+      <select id="s-mode"><option value="touch">触控（点哪里就点哪里）</option><option value="mouse">鼠标（屏幕当触控板）</option></select>
+    </label>
+    <label class="row">画质
+      <select id="s-quality"><option value="smooth">流畅（720p，省流量）</option><option value="balanced">均衡（1080p）</option></select>
+    </label>
+    <label class="row">帧率
+      <select id="s-fps"><option value="15">15</option><option value="30">30</option><option value="60">60</option></select>
+    </label>
+    <label class="row check"><input id="s-relay" type="checkbox"> P2P 打不通时改走中继（画质会差一些）</label>
+    <button id="s-forget" class="secondary">清除所有保存的密码</button>
+    <p class="small">MyDesk 手机版。画面、键鼠、密码都是端到端加密的，信令服务器只负责"牵线"。</p>
+    <button id="s-close" class="primary">完成</button>
+  </div>
+</div>
+
+<!-- ============================== 连接中 ============================== -->
+<div id="progress" class="overlay" hidden>
+  <div class="progress-box">
+    <div class="spinner"></div>
+    <p id="progress-text">正在连接…</p>
+    <button id="btn-cancel" class="secondary">取消</button>
+  </div>
+</div>
+
+<!-- ============================== 远程画面 ============================== -->
+<section id="session" hidden>
+  <div id="surface">
+    <canvas id="screen"></canvas>
+    <canvas id="cursor"></canvas>
+  </div>
+  <div id="waiting" class="waiting">正在等待画面…</div>
+
+  <input id="kbd" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+         enterkeyhint="send" aria-label="键盘输入">
+
+  <div id="keybar" hidden>
+    <div class="keys">
+      <button data-mod="ctrl">Ctrl</button><button data-mod="alt">Alt</button><button data-mod="shift">Shift</button>
+      <button data-mod="win">Win</button><button data-key="Escape">Esc</button><button data-key="Tab">Tab</button>
+      <button data-key="ArrowLeft">←</button><button data-key="ArrowUp">↑</button><button data-key="ArrowDown">↓</button>
+      <button data-key="ArrowRight">→</button><button data-key="Backspace">⌫</button><button data-key="Delete">Del</button>
+      <button data-key="Enter">⏎</button><button data-key="Home">Home</button><button data-key="End">End</button>
+      <button data-key="PageUp">PgUp</button><button data-key="PageDown">PgDn</button>
+      <button data-key="F1">F1</button><button data-key="F2">F2</button><button data-key="F3">F3</button>
+      <button data-key="F4">F4</button><button data-key="F5">F5</button><button data-key="F6">F6</button>
+      <button data-key="F7">F7</button><button data-key="F8">F8</button><button data-key="F9">F9</button>
+      <button data-key="F10">F10</button><button data-key="F11">F11</button><button data-key="F12">F12</button>
+    </div>
+    <div class="keys combos">
+      <button data-combo="ctrl+c">复制</button><button data-combo="ctrl+v">粘贴</button>
+      <button data-combo="ctrl+x">剪切</button><button data-combo="ctrl+z">撤销</button>
+      <button data-combo="ctrl+a">全选</button><button data-combo="ctrl+s">保存</button>
+      <button data-combo="alt+tab">切换窗口</button><button data-combo="win+d">显示桌面</button>
+      <button data-combo="win+e">资源管理器</button><button data-combo="win+r">运行</button>
+      <button data-combo="alt+f4">关闭窗口</button><button data-combo="ctrl+shift+esc">任务管理器</button>
+      <button data-combo="win">开始菜单</button>
+    </div>
+  </div>
+
+  <button id="fab" aria-label="菜单">
+    <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+  </button>
+
+  <div id="menu" hidden>
+    <div class="menu-status" id="menu-status"></div>
+    <div class="menu-grid">
+      <button data-act="keyboard">⌨️<span>键盘</span></button>
+      <button data-act="keybar">🎹<span>快捷键</span></button>
+      <button data-act="mode">🖱️<span id="mode-label">鼠标模式</span></button>
+      <button data-act="text">📝<span>发送文字</span></button>
+      <button data-act="fit">🔍<span>适应屏幕</span></button>
+      <button data-act="fullscreen" id="act-fullscreen">⛶<span>全屏</span></button>
+      <button data-act="refresh">🔄<span>刷新画面</span></button>
+      <button data-act="lock">🔒<span>锁定电脑</span></button>
+      <button data-act="disconnect" class="danger">⏏️<span>断开</span></button>
+    </div>
+    <div class="menu-row"><span>画质</span>
+      <div class="seg" data-seg="quality"><button data-v="smooth">流畅</button><button data-v="balanced">均衡</button></div>
+    </div>
+    <div class="menu-row"><span>帧率</span>
+      <div class="seg" data-seg="fps"><button data-v="15">15</button><button data-v="30">30</button><button data-v="60">60</button></div>
+    </div>
+    <div class="menu-row" id="monitor-row" hidden><span>显示器</span><div class="seg" id="monitor-seg"></div></div>
+    <p class="menu-help" id="menu-help"></p>
+  </div>
+
+  <div id="textdlg" class="sheet" hidden>
+    <div class="sheet-body">
+      <h2>发送文字到远程电脑</h2>
+      <textarea id="text-input" rows="4" placeholder="输入的文字会在远程电脑的光标处打出来（锁屏密码框也可以）"></textarea>
+      <div class="btn-row"><button id="text-cancel" class="secondary">取消</button><button id="text-send" class="primary">发送</button></div>
+    </div>
+  </div>
+
+  <div id="statusline"></div>
+</section>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
